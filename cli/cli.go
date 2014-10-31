@@ -74,8 +74,7 @@ func App() *cgcli.App {
 					panic(err)
 				}
 
-				bucketSet := bucketset.BucketSetFromContext(c)
-
+				bucketSet := storageSetFromContext(c).BucketSet()
 				bytesWritten, err := bucketSet.Upload(bucketset.BucketUpload{
 					CacheKey:     c.String("cache-key"),
 					PermanentKey: c.String("permanent-key"),
@@ -109,7 +108,7 @@ func App() *cgcli.App {
 				}
 				defer localFile.Close()
 
-				bucketSet := bucketset.BucketSetFromContext(c)
+				bucketSet := storageSetFromContext(c).BucketSet()
 				bytesWritten, err := bucketSet.Download(bucketset.BucketDownload{
 					CacheKey:     c.String("cache-key"),
 					PermanentKey: c.String("permanent-key"),
@@ -135,4 +134,28 @@ func App() *cgcli.App {
 	}
 
 	return app
+}
+
+func storageSetFromContext(c *cgcli.Context) *bucketset.StorageSet {
+	return &bucketset.StorageSet{
+		Cache:     getCacheStorage(c),
+		Permanent: getPermanentStorage(c),
+	}
+}
+
+func getPermanentStorage(c *cgcli.Context) *bucketset.Storage {
+	return getStorage("permanent", c)
+}
+
+func getCacheStorage(c *cgcli.Context) *bucketset.Storage {
+	return getStorage("cache", c)
+}
+
+func getStorage(prefix string, c *cgcli.Context) *bucketset.Storage {
+	return &bucketset.Storage{
+		Endpoint:        c.String(prefix + "-endpoint"),
+		BucketName:      c.String(prefix + "-bucket"),
+		AccessKeyId:     c.String(prefix + "-access-key-id"),
+		SecretAccessKey: c.String(prefix + "-secret-access-key"),
+	}
 }
