@@ -1,11 +1,10 @@
 package cli
 
 import (
-	"io"
 	"os"
 
 	cgcli "github.com/codegangsta/cli"
-	"github.com/rlmcpherson/s3gof3r"
+	"github.com/mark-rushakoff/ss33/bucketset"
 )
 
 func App() *cgcli.App {
@@ -75,9 +74,9 @@ func App() *cgcli.App {
 					panic(err)
 				}
 
-				bucketSet := bucketSetFromContext(c)
+				bucketSet := bucketset.BucketSetFromContext(c)
 
-				bytesWritten, err := bucketSet.Upload(bucketUpload{
+				bytesWritten, err := bucketSet.Upload(bucketset.BucketUpload{
 					CacheKey:     c.String("cache-key"),
 					PermanentKey: c.String("permanent-key"),
 					Source:       localFile,
@@ -110,8 +109,8 @@ func App() *cgcli.App {
 				}
 				defer localFile.Close()
 
-				bucketSet := bucketSetFromContext(c)
-				bytesWritten, err := bucketSet.Download(bucketDownload{
+				bucketSet := bucketset.BucketSetFromContext(c)
+				bytesWritten, err := bucketSet.Download(bucketset.BucketDownload{
 					CacheKey:     c.String("cache-key"),
 					PermanentKey: c.String("permanent-key"),
 					Destination:  localFile,
@@ -136,90 +135,4 @@ func App() *cgcli.App {
 	}
 
 	return app
-}
-
-type bucketSet struct {
-	Cache     *s3gof3r.Bucket
-	Permanent *s3gof3r.Bucket
-}
-
-type bucketUpload struct {
-	CacheKey     string
-	PermanentKey string
-	Source       io.Reader
-}
-
-type bucketDownload struct {
-	CacheKey     string
-	PermanentKey string
-	Destination  io.Writer
-}
-
-func (b *bucketSet) Upload(settings bucketUpload) (bytesWritten int64, err error) {
-	permanentWriter, err := b.Permanent.PutWriter(settings.PermanentKey, nil, b.Permanent.Config)
-	if err != nil {
-		return 0, err
-	}
-	defer permanentWriter.Close()
-
-	cacheWriter, err := b.Cache.PutWriter(settings.CacheKey, nil, b.Cache.Config)
-	if err != nil {
-		return 0, err
-	}
-	defer cacheWriter.Close()
-
-	everythingWriter := io.MultiWriter(permanentWriter, cacheWriter)
-
-	return io.Copy(everythingWriter, settings.Source)
-}
-
-func (b *bucketSet) Download(settings bucketDownload) (bytesWritten int64, err error) {
-	cacheReader, _, err := b.Cache.GetReader(settings.CacheKey, b.Cache.Config)
-	if err != nil {
-		return b.WarmCacheAndDownload(settings)
-	}
-	defer cacheReader.Close()
-
-	return io.Copy(settings.Destination, cacheReader)
-}
-
-func (b *bucketSet) WarmCacheAndDownload(settings bucketDownload) (bytesWritten int64, err error) {
-	permanentReader, _, err := b.Permanent.GetReader(settings.PermanentKey, b.Permanent.Config)
-	if err != nil {
-		return 0, err
-	}
-	defer permanentReader.Close()
-
-	cacheWriter, err := b.Cache.PutWriter(settings.CacheKey, nil, b.Cache.Config)
-	if err != nil {
-		return 0, err
-	}
-	defer cacheWriter.Close()
-
-	everythingWriter := io.MultiWriter(settings.Destination, cacheWriter)
-
-	return io.Copy(everythingWriter, permanentReader)
-}
-
-func bucketSetFromContext(c *cgcli.Context) *bucketSet {
-	return &bucketSet{
-		Cache:     getCacheBucket(c),
-		Permanent: getPermanentBucket(c),
-	}
-}
-
-func getPermanentBucket(c *cgcli.Context) *s3gof3r.Bucket {
-	return getBucket("permanent", c)
-}
-
-func getCacheBucket(c *cgcli.Context) *s3gof3r.Bucket {
-	return getBucket("cache", c)
-}
-
-func getBucket(prefix string, c *cgcli.Context) *s3gof3r.Bucket {
-	permanentClient := s3gof3r.New(c.String(prefix+"-endpoint"), s3gof3r.Keys{
-		AccessKey: c.String(prefix + "-access-key-id"),
-		SecretKey: c.String(prefix + "-secret-access-key"),
-	})
-	return permanentClient.Bucket(c.String(prefix + "-bucket"))
 }
