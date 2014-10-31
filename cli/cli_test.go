@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 
@@ -76,6 +77,13 @@ var _ = Describe("CLI", func() {
 			defer os.Remove(file.Name())
 			ioutil.WriteFile(file.Name(), randomFileContent, 0600)
 
+			configFile, err := ioutil.TempFile("", "ss33-test-config")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(configFile.Name())
+			configContent, err := json.Marshal(storageSet)
+			Expect(err).NotTo(HaveOccurred())
+			ioutil.WriteFile(configFile.Name(), configContent, 0600)
+
 			destName := RandomString()
 			defer PurgeFile(storageSet, destName)
 
@@ -87,18 +95,10 @@ var _ = Describe("CLI", func() {
 				"placeholder_for_prog_name",
 				"get",
 				"--file", file.Name(),
+				"--config", configFile.Name(),
 
-				"--permanent-endpoint", storageSet.Permanent.Endpoint,
-				"--permanent-bucket", storageSet.Permanent.BucketName,
-				"--permanent-key", destName,
-				"--permanent-access-key-id", storageSet.Permanent.AccessKeyId,
-				"--permanent-secret-access-key", storageSet.Permanent.SecretAccessKey,
-
-				"--cache-endpoint", storageSet.Cache.Endpoint,
-				"--cache-bucket", storageSet.Cache.BucketName,
 				"--cache-key", destName,
-				"--cache-access-key-id", storageSet.Cache.AccessKeyId,
-				"--cache-secret-access-key", storageSet.Cache.SecretAccessKey,
+				"--permanent-key", destName,
 			}
 
 			app := cli.App()

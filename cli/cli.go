@@ -14,8 +14,14 @@ func App() *cgcli.App {
 
 	cacheIoFlags := []cgcli.Flag{
 		cgcli.StringFlag{
+			Name:   "config",
+			Usage:  "Path to ss33 config.json file",
+			EnvVar: "SS33_CONFIG",
+		},
+
+		cgcli.StringFlag{
 			Name:  "file",
-			Usage: "Path to local file to upload",
+			Usage: "Path to local file to upload or path to save downloaded file",
 		},
 
 		cgcli.StringFlag{
@@ -74,7 +80,7 @@ func App() *cgcli.App {
 					panic(err)
 				}
 
-				bucketSet := storageSetFromContext(c).BucketSet()
+				bucketSet := bucketSetFromContext(c)
 				bytesWritten, err := bucketSet.Upload(bucketset.BucketUpload{
 					CacheKey:     c.String("cache-key"),
 					PermanentKey: c.String("permanent-key"),
@@ -108,7 +114,7 @@ func App() *cgcli.App {
 				}
 				defer localFile.Close()
 
-				bucketSet := storageSetFromContext(c).BucketSet()
+				bucketSet := bucketSetFromContext(c)
 				bytesWritten, err := bucketSet.Download(bucketset.BucketDownload{
 					CacheKey:     c.String("cache-key"),
 					PermanentKey: c.String("permanent-key"),
@@ -134,6 +140,24 @@ func App() *cgcli.App {
 	}
 
 	return app
+}
+
+func bucketSetFromContext(c *cgcli.Context) *bucketset.BucketSet {
+	storageSet := &bucketset.StorageSet{
+		Permanent: &bucketset.Storage{},
+		Cache:     &bucketset.Storage{},
+	}
+	configPath := c.String("config")
+	if configPath != "" {
+		configStorageSet, err := bucketset.StorageSetFromFile(configPath)
+		if err != nil {
+			panic(err)
+		}
+		storageSet.Merge(*configStorageSet)
+	}
+
+	storageSet.Merge(*storageSetFromContext(c))
+	return storageSet.BucketSet()
 }
 
 func storageSetFromContext(c *cgcli.Context) *bucketset.StorageSet {
