@@ -8,7 +8,7 @@ import (
 	"github.com/mark-rushakoff/ss33/cli"
 	"github.com/rlmcpherson/s3gof3r"
 
-	. "github.com/mark-rushakoff/ss33/test_helper"
+	. "github.com/mark-rushakoff/ss33/testhelper"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -1,4 +1,4 @@
-package test_helper
+package testhelper
 
 import (
 	"crypto/rand"
@@ -30,9 +30,8 @@ func LoadTestStorageSet() *config.StorageSet {
 func RandomString() string {
 	sourceLength := 35
 	bytes := make([]byte, sourceLength)
-	if _, err := rand.Read(bytes); err != nil {
-		panic(err)
-	}
+	_, err := rand.Read(bytes)
+	Expect(err).NotTo(HaveOccurred())
 	return base32.StdEncoding.EncodeToString(bytes)
 }
 
