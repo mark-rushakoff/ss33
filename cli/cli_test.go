@@ -36,6 +36,7 @@ var _ = Describe("CLI", func() {
 			ioutil.WriteFile(file.Name(), randomFileContent, 0600)
 
 			destName := RandomString()
+			defer PurgeFile(storageSet, destName)
 
 			args := []string{
 				"placeholder_for_prog_name",
@@ -60,8 +61,6 @@ var _ = Describe("CLI", func() {
 
 			AssertS3FileExistsWithContent(storageSet.Permanent, destName, randomFileContent)
 			AssertS3FileExistsWithContent(storageSet.Cache, destName, randomFileContent)
-
-			// TODO: delete uploaded files
 		})
 	})
 
@@ -78,6 +77,7 @@ var _ = Describe("CLI", func() {
 			ioutil.WriteFile(file.Name(), randomFileContent, 0600)
 
 			destName := RandomString()
+			defer PurgeFile(storageSet, destName)
 
 			PutFile(storageSet.Permanent, destName, file.Name())
 			AssertS3FileExistsWithContent(storageSet.Permanent, destName, randomFileContent)
@@ -106,8 +106,6 @@ var _ = Describe("CLI", func() {
 
 			AssertFileExistsWithContent(file.Name(), randomFileContent)
 			AssertS3FileExistsWithContent(storageSet.Cache, destName, randomFileContent)
-
-			// TODO: delete uploaded files
 		})
 
 		It("gets the file from the cache without even checking permanent storage", func() {
@@ -122,6 +120,7 @@ var _ = Describe("CLI", func() {
 			ioutil.WriteFile(file.Name(), randomFileContent, 0600)
 
 			destName := RandomString()
+			defer PurgeFile(storageSet, destName)
 
 			PutFile(storageSet.Cache, destName, file.Name())
 			AssertS3FileExistsWithContent(storageSet.Cache, destName, randomFileContent)
@@ -143,8 +142,6 @@ var _ = Describe("CLI", func() {
 			app.Run(args)
 
 			AssertFileExistsWithContent(file.Name(), randomFileContent)
-
-			// TODO: delete uploaded files
 		})
 	})
 })

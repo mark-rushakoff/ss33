@@ -35,9 +35,21 @@ func RandomString() string {
 	return base32.StdEncoding.EncodeToString(bytes)
 }
 
-func AssertS3FileExistsWithContent(storage config.Storage, key string, expectedContent []byte) {
+func bucketFromStorage(storage config.Storage) *s3gof3r.Bucket {
 	s3Client := s3gof3r.New(storage.Endpoint, s3gof3r.Keys{AccessKey: storage.AccessKeyId, SecretKey: storage.SecretAccessKey})
-	bucket := s3Client.Bucket(storage.BucketName)
+	return s3Client.Bucket(storage.BucketName)
+}
+
+func PurgeFile(storageSet *config.StorageSet, key string) {
+	permanentBucket := bucketFromStorage(storageSet.Permanent)
+	permanentBucket.Delete(key)
+
+	cacheBucket := bucketFromStorage(storageSet.Cache)
+	cacheBucket.Delete(key)
+}
+
+func AssertS3FileExistsWithContent(storage config.Storage, key string, expectedContent []byte) {
+	bucket := bucketFromStorage(storage)
 	reader, _, err := bucket.GetReader(key, bucket.Config)
 	Expect(err).NotTo(HaveOccurred())
 	defer reader.Close()
@@ -56,8 +68,7 @@ func AssertFileExistsWithContent(path string, expectedContent []byte) {
 }
 
 func PutFile(storage config.Storage, key string, localFilePath string) {
-	s3Client := s3gof3r.New(storage.Endpoint, s3gof3r.Keys{AccessKey: storage.AccessKeyId, SecretKey: storage.SecretAccessKey})
-	bucket := s3Client.Bucket(storage.BucketName)
+	bucket := bucketFromStorage(storage)
 
 	writer, err := bucket.PutWriter(key, nil, bucket.Config)
 	Expect(err).NotTo(HaveOccurred())
